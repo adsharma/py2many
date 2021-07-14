@@ -44,6 +44,17 @@ class VTranspilerPlugins:
         else:
             return f"({self.visit(node.args[0])}).bool()"
 
+    def visit_min_max(self, node: ast.Call, vargs: List[str]) -> str:
+        self._usings.add("arrays")
+        func = "min" if node.func.id == "min" else "max"
+        # Since python allows calling min/max on either a container or
+        # multiple integers, we simply it to only a container when passing
+        # it to the V side.
+        if len(vargs) == 1:
+            return f"arrays.{func}({vargs[0]})"
+        else:
+            return f"arrays.{func}([{', '.join(vargs)}])"
+
 
 SMALL_DISPATCH_MAP: Dict[str, Callable] = {
     "str": lambda n, vargs: f"({vargs[0]}).str()",
@@ -74,4 +85,6 @@ FUNC_DISPATCH_TABLE: Dict[FuncType, Tuple[Callable, bool]] = {
     range: (VTranspilerPlugins.visit_range, False),
     print: (VTranspilerPlugins.visit_print, False),
     bool: (VTranspilerPlugins.visit_bool, False),
+    min: (VTranspilerPlugins.visit_min_max, False),
+    max: (VTranspilerPlugins.visit_min_max, False),
 }

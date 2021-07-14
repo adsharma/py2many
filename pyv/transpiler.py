@@ -222,8 +222,15 @@ class VTranspiler(CLikeTranspiler):
 
         vargs: List[str] = []
 
-        if node.args:
-            vargs.extend(map(self.visit, node.args))
+        for idx, arg in enumerate(node.args):
+            if (
+                isinstance(arg, ast.Name)
+                and isinstance(fndef, ast.FunctionDef)
+                and is_mutable(fndef.scopes, fndef.args.args[idx].arg)
+            ):
+                vargs.append(f"mut {arg.id}")
+            else:
+                vargs.append(self.visit(arg))
         if node.keywords:
             vargs += [self.visit(kw.value) for kw in node.keywords]
 

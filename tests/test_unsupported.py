@@ -225,9 +225,9 @@ class CodeGeneratorTests(unittest.TestCase):
         case_filename = TESTS_DIR / "cases" / f"{case}.py"
         case_output = GENERATED_DIR / f"{case}{ext}"
         try:
-            result = _transpile([case_filename], [tree], settings,)[
-                0
-            ][0]
+            result = _transpile(
+                [case_filename], [tree], settings, _suppress_exceptions=False
+            )[0][0]
         except NotImplementedError as e:
             raise unittest.SkipTest(str(e))
 

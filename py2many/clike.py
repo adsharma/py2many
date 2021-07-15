@@ -607,13 +607,13 @@ class CLikeTranspiler(ast.NodeVisitor):
             return self.visit_IntFlag(node)
 
     def visit_StrEnum(self, node):
-        raise Exception("Unimplemented")
+        raise AstNotImplementedError("String enums not implemented", node)
 
     def visit_IntEnum(self, node):
-        raise Exception("Unimplemented")
+        raise AstNotImplementedError("Integer enums not implemented", node)
 
     def visit_IntFlag(self, node):
-        raise Exception("Unimplemented")
+        raise AstNotImplementedError("Integer flags not implemented", node)
 
     def visit_IfExp(self, node):
         body = self.visit(node.body)

@@ -76,21 +76,15 @@ class RustTranspilerPlugins:
         return f"File::open({vargs[0]})"
 
     def visit_read(self, node, vargs):
+        assert len(vargs) <= 1, "read() with more than one argument"
         if len(vargs) == 0:
             return "f.read_string()"
-        elif len(vargs) == 1:
-            self._usings.add("pylib::FileReadBytes")
-            return f"std::str::from_utf8(&f.read_bytes({vargs[0]})?)"
-        raise Exception("read() with more than one argument")
+        self._usings.add("pylib::FileReadBytes")
+        return f"std::str::from_utf8(&f.read_bytes({vargs[0]})?)"
 
     def visit_write(self, node, vargs):
-        if len(vargs) == 1:
-            return f"f.write_string({vargs[0]})"
-        elif len(vargs) == 2:
-            # TODO: This should be based on the type of the argument, not len
-            self._usings.add("pylib::FileWriteBytes")
-            return f"f.write_bytes({vargs[0]})"
-        raise Exception("write() with more than one argument")
+        assert len(vargs) == 1, "write() can only have one argument"
+        return f"f.write_string({vargs[0]})"
 
     def visit_named_temp_file(self, node, vargs):
         node.annotation = ast.Name(id="tempfile._TemporaryFileWrapper")
@@ -110,16 +104,12 @@ class RustTranspilerPlugins:
         return cls
 
     def visit_range(self, node, vargs: List[str]) -> str:
+        assert 0 < len(node.args) < 4, "range() call with unexpected arguments"
         if len(node.args) == 1:
             return "(0..{})".format(vargs[0])
         elif len(node.args) == 2:
             return "({}..{})".format(vargs[0], vargs[1])
-        elif len(node.args) == 3:
-            return "({}..{}).step_by({})".format(vargs[0], vargs[1], vargs[2])
-
-        raise Exception(
-            "encountered range() call with unknown parameters: range({})".format(vargs)
-        )
+        return "({}..{}).step_by({})".format(vargs[0], vargs[1], vargs[2])
 
     def visit_print(self, node, vargs: List[str]) -> str:
         placeholders = []

@@ -90,6 +90,7 @@ class GoTranspilerPlugins:
         return cls
 
     def visit_range(self, node, vargs: List[str]) -> str:
+        assert 0 < len(node.args) < 4, "range() call with unexpected arguments"
         self._usings.add('iter "github.com/hgfischer/go-iter"')
         if len(node.args) == 1:
             return f"iter.NewIntSeq(iter.Start(0), iter.Stop({vargs[0]})).All()"
@@ -97,12 +98,7 @@ class GoTranspilerPlugins:
             return (
                 f"iter.NewIntSeq(iter.Start({vargs[0]}), iter.Stop({vargs[1]})).All()"
             )
-        elif len(node.args) == 3:
-            return f"iter.NewIntSeq(iter.Start({vargs[0]}), iter.Stop({vargs[1]}), iter.Step({vargs[2]})).All()"
-
-        raise Exception(
-            "encountered range() call with unknown parameters: range({})".format(vargs)
-        )
+        return f"iter.NewIntSeq(iter.Start({vargs[0]}), iter.Stop({vargs[1]}), iter.Step({vargs[2]})).All()"
 
     def visit_print(self, node, vargs: List[str]) -> str:
         placeholders = []

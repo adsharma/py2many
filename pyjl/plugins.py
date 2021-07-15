@@ -89,16 +89,12 @@ class JuiliaTranspilerPlugins:
         return cls
 
     def visit_range(self, node, vargs: List[str]) -> str:
+        assert 0 < len(node.args) < 4, "range() call with unexpected arguments"
         if len(node.args) == 1:
             return f"(0:{vargs[0]} - 1)"
         elif len(node.args) == 2:
             return f"({vargs[0]}:{vargs[1]} - 1)"
-        elif len(node.args) == 3:
-            return f"({vargs[0]}:{vargs[2]}:{vargs[1]}-1)"
-
-        raise Exception(
-            "encountered range() call with unknown parameters: range({})".format(vargs)
-        )
+        return f"({vargs[0]}:{vargs[2]}:{vargs[1]}-1)"
 
     def visit_print(self, node, vargs: List[str]) -> str:
         args = ", ".join(vargs)

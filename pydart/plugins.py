@@ -90,6 +90,7 @@ class DartTranspilerPlugins:
         return cls
 
     def visit_range(self, node, vargs: List[str]) -> str:
+        assert 0 < len(node.args) < 4, "range() call with unexpected arguments"
         start = 0
         step = 1
         if len(vargs) == 1:
@@ -97,16 +98,10 @@ class DartTranspilerPlugins:
         elif len(node.args) == 2:
             start = vargs[0]
             end = vargs[1]
-        elif len(node.args) == 3:
+        else:
             start = vargs[0]
             end = vargs[1]
             step = vargs[2]
-        else:
-            raise Exception(
-                "encountered range() call with unknown parameters: range({})".format(
-                    vargs
-                )
-            )
 
         return f"([for(var i = {start}; i < {end}; i += {step}) i])"
 

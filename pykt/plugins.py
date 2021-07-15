@@ -91,16 +91,12 @@ class KotlinTranspilerPlugins:
         return cls
 
     def visit_range(self, node, vargs: List[str]) -> str:
+        assert 0 < len(node.args) < 4, "range() call with unexpected arguments"
         if len(node.args) == 1:
             return "(0..{}-1)".format(vargs[0])
         elif len(node.args) == 2:
             return "({}..{}-1)".format(vargs[0], vargs[1])
-        elif len(node.args) == 3:
-            return "({}..{}-1 step {})".format(vargs[0], vargs[1], vargs[2])
-
-        raise Exception(
-            "encountered range() call with unknown parameters: range({})".format(vargs)
-        )
+        return "({}..{}-1 step {})".format(vargs[0], vargs[1], vargs[2])
 
     def visit_print(self, node, vargs: List[str]) -> str:
         def _format(arg):

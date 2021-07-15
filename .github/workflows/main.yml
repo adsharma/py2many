@@ -41,7 +41,7 @@ jobs:
         shell: bash
         run: |
           git clone --single-branch https://github.com/vlang/v.git /tmp/v
-          (cd /tmp/v && git checkout 02f0a3055515c8e13b5e016ef266b346b705e3d3)
+          (cd /tmp/v && git checkout 646c1e15e26030a41c97de30e551e422f60fa75e)
           if [ "$RUNNER_OS" == "Windows" ]; then
             (cd /tmp/v && ./make.bat)
           else

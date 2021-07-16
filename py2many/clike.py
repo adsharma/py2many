@@ -283,7 +283,7 @@ class CLikeTranspiler(ast.NodeVisitor):
             return ret
         return typename
 
-    def visit(self, node):
+    def visit(self, node) -> str:
         if node is None:
             raise AstEmptyNodeFound
         if type(node) in symbols:
@@ -296,10 +296,10 @@ class CLikeTranspiler(ast.NodeVisitor):
             except Exception as e:
                 raise AstNotImplementedError(e, node) from e
 
-    def visit_Pass(self, node):
+    def visit_Pass(self, node) -> str:
         return self.comment("pass")
 
-    def visit_Module(self, node):
+    def visit_Module(self, node) -> str:
         docstring = getattr(node, "docstring_comment", None)
         buf = [self.comment(docstring.value)] if docstring is not None else []
         filename = getattr(node, "__file__", None)
@@ -330,7 +330,7 @@ class CLikeTranspiler(ast.NodeVisitor):
     def _import_from(self, module_name: str, names: List[str]) -> str:
         ...
 
-    def visit_Import(self, node):
+    def visit_Import(self, node) -> str:
         names = [self.visit(n) for n in node.names]
         imports = [
             self._import(name)
@@ -346,7 +346,7 @@ class CLikeTranspiler(ast.NodeVisitor):
                 self._imported_names[asname] = imported_name
         return "\n".join(imports)
 
-    def visit_ImportFrom(self, node):
+    def visit_ImportFrom(self, node) -> str:
         if node.module in self._ignored_module_set:
             return ""
 
@@ -371,15 +371,15 @@ class CLikeTranspiler(ast.NodeVisitor):
         names = [n for n, _ in names]
         return self._import_from(imported_name, names)
 
-    def visit_Name(self, node):
+    def visit_Name(self, node) -> str:
         if node.id in self.builtin_constants:
             return node.id.lower()
         return node.id
 
-    def visit_Ellipsis(self, node):
+    def visit_Ellipsis(self, node) -> str:
         return self.comment("...")
 
-    def visit_NameConstant(self, node):
+    def visit_NameConstant(self, node) -> str:
         if node.value is True:
             return "true"
         elif node.value is False:
@@ -391,14 +391,14 @@ class CLikeTranspiler(ast.NodeVisitor):
         else:
             return node.value
 
-    def visit_Constant(self, node):
+    def visit_Constant(self, node) -> str:
         if isinstance(node.value, str):
             return self.visit_Str(node)
         elif isinstance(node.value, bytes):
             return self.visit_Bytes(node)
         return str(self.visit_NameConstant(node))
 
-    def visit_Expr(self, node):
+    def visit_Expr(self, node) -> str:
         s = self.visit(node.value)
         if isinstance(node.value, ast.Constant) and node.value.value is Ellipsis:
             return s
@@ -412,12 +412,12 @@ class CLikeTranspiler(ast.NodeVisitor):
         else:
             return s
 
-    def visit_Str(self, node):
+    def visit_Str(self, node) -> str:
         node_str = node.value
         node_str = node_str.replace('"', '\\"')
         return f'"{node_str}"'
 
-    def visit_Bytes(self, node):
+    def visit_Bytes(self, node) -> str:
         bytes_str = node.s
         byte_array = ", ".join([hex(c) for c in bytes_str])
         return f"{{{byte_array}}}"
@@ -429,7 +429,7 @@ class CLikeTranspiler(ast.NodeVisitor):
         typenames, args = map(list, zip(*args))
         return typenames, args
 
-    def visit_Return(self, node):
+    def visit_Return(self, node) -> str:
         if node.value:
             return "return {0};".format(self.visit(node.value))
         return "return;"
@@ -455,7 +455,7 @@ class CLikeTranspiler(ast.NodeVisitor):
             and node.rewritten
         )
 
-    def visit_If(self, node, use_parens=True):
+    def visit_If(self, node, use_parens=True) -> str:
         buf = []
         make_block = self.is_block(node)
         if make_block:
@@ -478,13 +478,13 @@ class CLikeTranspiler(ast.NodeVisitor):
             buf.append("}")
         return "\n".join(buf)
 
-    def visit_Continue(self, node):
+    def visit_Continue(self, node) -> str:
         return "continue;"
 
-    def visit_Break(self, node):
+    def visit_Break(self, node) -> str:
         return "break;"
 
-    def visit_While(self, node, use_parens=True):
+    def visit_While(self, node, use_parens=True) -> str:
         buf = []
         if use_parens:
             buf.append("while ({0}) {{".format(self.visit(node.test)))
@@ -494,7 +494,7 @@ class CLikeTranspiler(ast.NodeVisitor):
         buf.append("}")
         return "\n".join(buf)
 
-    def visit_Compare(self, node):
+    def visit_Compare(self, node) -> str:
         if isinstance(node.ops[0], ast.In):
             return self.visit_In(node)
 
@@ -504,22 +504,22 @@ class CLikeTranspiler(ast.NodeVisitor):
 
         return "{0} {1} {2}".format(left, op, right)
 
-    def visit_BoolOp(self, node):
+    def visit_BoolOp(self, node) -> str:
         op = self.visit(node.op)
         return op.join([self.visit(v) for v in node.values])
 
-    def visit_UnaryOp(self, node):
+    def visit_UnaryOp(self, node) -> str:
         return "{0}({1})".format(self.visit(node.op), self.visit(node.operand))
 
     def _visit_AssignOne(self, node, target) -> str:
         ...
 
-    def visit_Assign(self, node):
+    def visit_Assign(self, node) -> str:
         return "\n".join(
             [self._visit_AssignOne(node, target) for target in node.targets]
         )
 
-    def visit_AugAssign(self, node):
+    def visit_AugAssign(self, node) -> str:
         target = self.visit(node.target)
         op = self.visit(node.op)
         val = self.visit(node.value)
@@ -541,7 +541,7 @@ class CLikeTranspiler(ast.NodeVisitor):
     def set_continue_on_unimplemented(self):
         self._throw_on_unimplemented = False
 
-    def visit_unsupported_body(self, node, name, body):
+    def visit_unsupported_body(self, node, name, body) -> str:
         if self._throw_on_unimplemented:
             raise AstNotImplementedError(f"{name} not implemented", node)
         else:
@@ -549,48 +549,48 @@ class CLikeTranspiler(ast.NodeVisitor):
                 f"{name} unimplemented on line {node.lineno}:{node.col_offset}"
             )
 
-    def visit_NamedExpr(self, node):
+    def visit_NamedExpr(self, node) -> str:
         target = self.visit(node.target)
         return self.visit_unsupported_body(node, f"named expr {target}", node.value)
 
-    def visit_Delete(self, node):
+    def visit_Delete(self, node) -> str:
         body = [self.visit(t) for t in node.targets]
         return self.visit_unsupported_body(node, "del", body)
 
-    def visit_Await(self, node):
+    def visit_Await(self, node) -> str:
         return self.visit_unsupported_body(node, "await", node.value)
 
-    def visit_AsyncFor(self, node):
+    def visit_AsyncFor(self, node) -> str:
         target = self.visit(node.target)
         iter = self.visit(node.iter)
         return self.visit_unsupported_body(
             node, f"async for {target} in {iter}", node.body
         )
 
-    def visit_AsyncWith(self, node):
+    def visit_AsyncWith(self, node) -> str:
         items = [self.visit(i) for i in node.items]
         return self.visit_unsupported_body(node, f"async with {items}", node.body)
 
-    def visit_YieldFrom(self, node):
+    def visit_YieldFrom(self, node) -> str:
         return self.visit_unsupported_body(node, "yield from", node.value)
 
-    def visit_AsyncFunctionDef(self, node):
+    def visit_AsyncFunctionDef(self, node) -> str:
         return self.visit_unsupported_body(node, "async def", node.body)
 
-    def visit_Nonlocal(self, node):
+    def visit_Nonlocal(self, node) -> str:
         return self.visit_unsupported_body(node, "nonlocal", node.names)
 
-    def visit_DictComp(self, node):
+    def visit_DictComp(self, node) -> str:
         key = self.visit(node.key)
         value = self.visit(node.value)
         return self.visit_unsupported_body(
             node, f"dict comprehension ({key}, {value})", node.generators
         )
 
-    def visit_ListComp(self, node):
+    def visit_ListComp(self, node) -> str:
         return self.visit_GeneratorExp(node)  # by default, they are the same
 
-    def visit_SetComp(self, node):
+    def visit_SetComp(self, node) -> str:
         return self.visit_GeneratorExp(node)  # by default, they are the same
 
     def visit_ClassDef(self, node):
@@ -606,16 +606,16 @@ class CLikeTranspiler(ast.NodeVisitor):
         if bases == ["IntFlag"]:
             return self.visit_IntFlag(node)
 
-    def visit_StrEnum(self, node):
+    def visit_StrEnum(self, node) -> str:
         raise Exception("Unimplemented")
 
-    def visit_IntEnum(self, node):
+    def visit_IntEnum(self, node) -> str:
         raise Exception("Unimplemented")
 
-    def visit_IntFlag(self, node):
+    def visit_IntFlag(self, node) -> str:
         raise Exception("Unimplemented")
 
-    def visit_IfExp(self, node):
+    def visit_IfExp(self, node) -> str:
         body = self.visit(node.body)
         orelse = self.visit(node.orelse)
         test = self.visit(node.test)

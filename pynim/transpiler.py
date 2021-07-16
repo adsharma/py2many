@@ -76,7 +76,7 @@ class NimTranspiler(CLikeTranspiler):
     def comment(self, text):
         return f"# {text}\n"
 
-    def visit_FunctionDef(self, node):
+    def visit_FunctionDef(self, node) -> str:
         body = "\n".join([self.indent(self.visit(n)) for n in node.body])
         typenames, args = self.visit(node.args)
 
@@ -107,7 +107,7 @@ class NimTranspiler(CLikeTranspiler):
             maybe_main = "\nmain()"
         return f"{funcdef}\n{body}\n{maybe_main}"
 
-    def visit_Return(self, node):
+    def visit_Return(self, node) -> str:
         if node.value:
             ret = self.visit(node.value)
             fndef = None
@@ -139,7 +139,7 @@ class NimTranspiler(CLikeTranspiler):
                 typename = f"var {typename}"
         return (typename, id)
 
-    def visit_Lambda(self, node):
+    def visit_Lambda(self, node) -> str:
         typenames, args = self.visit(node.args)
         # HACK: to pass unit tests. TODO: infer types
         typenames = ["int"] * len(args)
@@ -149,7 +149,7 @@ class NimTranspiler(CLikeTranspiler):
         body = self.visit(node.body)
         return f"proc({args_string}):{return_type} = return {body}"
 
-    def visit_Attribute(self, node):
+    def visit_Attribute(self, node) -> str:
         attr = node.attr
 
         value_id = self.visit(node.value)
@@ -171,7 +171,7 @@ class NimTranspiler(CLikeTranspiler):
             return ret(self, node, value_id, attr)
         return ret
 
-    def _visit_object_literal(self, node, fname: str, fndef: ast.ClassDef):
+    def _visit_object_literal(self, node, fname: str, fndef: ast.ClassDef) -> str:
         vargs = []  # visited args
         if not hasattr(fndef, "declarations"):
             raise AstClassUsedBeforeDeclaration(fndef, node)
@@ -186,7 +186,7 @@ class NimTranspiler(CLikeTranspiler):
         args = ", ".join(vargs)
         return f"{fname}({args})"
 
-    def visit_Call(self, node):
+    def visit_Call(self, node) -> str:
         fname = self.visit(node.func)
         fndef = node.scopes.find(fname)
 
@@ -209,7 +209,7 @@ class NimTranspiler(CLikeTranspiler):
             args = ""
         return f"{fname}({args})"
 
-    def visit_For(self, node):
+    def visit_For(self, node) -> str:
         target = self.visit(node.target)
         it = self.visit(node.iter)
         buf = []
@@ -219,7 +219,7 @@ class NimTranspiler(CLikeTranspiler):
         )
         return "\n".join(buf)
 
-    def visit_While(self, node):
+    def visit_While(self, node) -> str:
         buf = []
         buf.append("while {0}:".format(self.visit(node.test)))
         buf.extend(
@@ -227,26 +227,26 @@ class NimTranspiler(CLikeTranspiler):
         )
         return "\n".join(buf)
 
-    def visit_Str(self, node):
+    def visit_Str(self, node) -> str:
         return "" + super().visit_Str(node) + ""
 
-    def visit_Bytes(self, node):
+    def visit_Bytes(self, node) -> str:
         bytes_str = "{0}".format(node.s)
         return bytes_str.replace("'", '"')  # replace single quote with double quote
 
-    def visit_Name(self, node):
+    def visit_Name(self, node) -> str:
         if node.id == "None":
             return "nil"
         else:
             return super().visit_Name(node)
 
-    def visit_NameConstant(self, node):
+    def visit_NameConstant(self, node) -> str:
         if node.value is None:
             return "nil"
         else:
             return super().visit_NameConstant(node)
 
-    def visit_If(self, node):
+    def visit_If(self, node) -> str:
         body_vars = set([get_id(v) for v in node.scopes[-1].body_vars])
         orelse_vars = set([get_id(v) for v in node.scopes[-1].orelse_vars])
         node.common_vars = body_vars.intersection(orelse_vars)
@@ -270,7 +270,7 @@ class NimTranspiler(CLikeTranspiler):
             orelse = ""
         return f"if {test}:\n{body}\n{orelse}"
 
-    def visit_UnaryOp(self, node):
+    def visit_UnaryOp(self, node) -> str:
         if isinstance(node.op, ast.USub):
             if isinstance(node.operand, (ast.Call, ast.Num)):
                 # Shortcut if parenthesis are not needed
@@ -280,7 +280,7 @@ class NimTranspiler(CLikeTranspiler):
         else:
             return super().visit_UnaryOp(node)
 
-    def visit_BinOp(self, node):
+    def visit_BinOp(self, node) -> str:
         if (
             isinstance(node.left, ast.List)
             and isinstance(node.op, ast.Mult)
@@ -292,7 +292,7 @@ class NimTranspiler(CLikeTranspiler):
         else:
             return super().visit_BinOp(node)
 
-    def visit_ClassDef(self, node):
+    def visit_ClassDef(self, node) -> str:
         extractor = DeclarationExtractor(NimTranspiler())
         extractor.visit(node)
         declarations = node.declarations = extractor.get_declarations()
@@ -330,7 +330,7 @@ class NimTranspiler(CLikeTranspiler):
         body = "\n".join(body)
         return f"{object_def}\n{body}\n"
 
-    def visit_IntEnum(self, node):
+    def visit_IntEnum(self, node) -> str:
         fields = []
         for member, var in node.class_assignments.items():
             var = self.visit(var)
@@ -341,7 +341,7 @@ class NimTranspiler(CLikeTranspiler):
         fields = "\n".join([self.indent(f) for f in fields])
         return f"type {node.name} = enum\n{fields}\n\n"
 
-    def visit_IntFlag(self, node):
+    def visit_IntFlag(self, node) -> str:
         fields = []
         for member, var in node.class_assignments.items():
             var = self.visit(var)
@@ -361,7 +361,7 @@ class NimTranspiler(CLikeTranspiler):
             ]
         )
 
-    def visit_StrEnum(self, node):
+    def visit_StrEnum(self, node) -> str:
         fields = []
         for member, var in node.class_assignments.items():
             var = self.visit(var)
@@ -386,25 +386,25 @@ class NimTranspiler(CLikeTranspiler):
                 return f"from {nim_module_name} import {nim_name}"
         return f"from {module_name} import {names}"
 
-    def visit_List(self, node):
+    def visit_List(self, node) -> str:
         elements = [self.visit(e) for e in node.elts]
         elements = ", ".join(elements)
         return f"@[{elements}]"
 
-    def visit_Set(self, node):
+    def visit_Set(self, node) -> str:
         self._usings.add("sets")
         elements = [self.visit(e) for e in node.elts]
         elements_str = ", ".join(elements)
         return f"toHashSet([{elements_str}])"
 
-    def visit_Dict(self, node):
+    def visit_Dict(self, node) -> str:
         self._usings.add("tables")
         keys = [self.visit(k) for k in node.keys]
         values = [self.visit(k) for k in node.values]
         kv_pairs = ", ".join([f"{k}: {v}" for k, v in zip(keys, values)])
         return f"{{{kv_pairs}}}.newTable"
 
-    def visit_Subscript(self, node):
+    def visit_Subscript(self, node) -> str:
         value = self.visit(node.value)
         index = self.visit(node.slice)
         if hasattr(node, "is_annotation"):
@@ -415,10 +415,10 @@ class NimTranspiler(CLikeTranspiler):
             return f"{value}[{index}]"
         return f"{value}[{index}]"
 
-    def visit_Index(self, node):
+    def visit_Index(self, node) -> str:
         return self.visit(node.value)
 
-    def visit_Slice(self, node):
+    def visit_Slice(self, node) -> str:
         lower = ""
         if node.lower:
             lower = self.visit(node.lower)
@@ -428,14 +428,14 @@ class NimTranspiler(CLikeTranspiler):
 
         return "{0}..{1}".format(lower, upper)
 
-    def visit_Tuple(self, node):
+    def visit_Tuple(self, node) -> str:
         elts = [self.visit(e) for e in node.elts]
         elts = ", ".join(elts)
         if hasattr(node, "is_annotation"):
             return elts
         return "({0})".format(elts)
 
-    def visit_Try(self, node, finallybody=None):
+    def visit_Try(self, node, finallybody=None) -> str:
         buf = self.visit_unsupported_body(node, "try_dummy", node.body)
 
         for handler in node.handlers:
@@ -447,7 +447,7 @@ class NimTranspiler(CLikeTranspiler):
 
         return "\n".join(buf)
 
-    def visit_ExceptHandler(self, node):
+    def visit_ExceptHandler(self, node) -> str:
         exception_type = ""
         if node.type:
             exception_type = self.visit(node.type)
@@ -455,17 +455,17 @@ class NimTranspiler(CLikeTranspiler):
         body = self.visit_unsupported_body(node, name, node.body)
         return body
 
-    def visit_Assert(self, node):
+    def visit_Assert(self, node) -> str:
         return "assert({0})".format(self.visit(node.test))
 
-    def visit_AnnAssign(self, node):
+    def visit_AnnAssign(self, node) -> str:
         target, type_str, val = super().visit_AnnAssign(node)
         kw = "var" if is_mutable(node.scopes, target) else "let"
         if type_str == self._default_type:
             return f"{kw} {target} = {val}"
         return f"{kw} {target}: {type_str} = {val}"
 
-    def visit_Assign(self, node):
+    def visit_Assign(self, node) -> str:
         lines = [self._visit_AssignOne(node, target) for target in node.targets]
         if len(lines) > 1:
             line0 = lines[0]
@@ -473,7 +473,7 @@ class NimTranspiler(CLikeTranspiler):
             lines[0] = line0  # parent node is going to add indentation
         return "\n".join(lines)
 
-    def _visit_AssignOne(self, node, target):
+    def _visit_AssignOne(self, node, target) -> str:
         kw = "var" if is_mutable(node.scopes, get_id(target)) else "let"
 
         if isinstance(target, ast.Tuple):
@@ -507,37 +507,37 @@ class NimTranspiler(CLikeTranspiler):
 
             return f"{kw} {target} = {value}"
 
-    def visit_Delete(self, node):
+    def visit_Delete(self, node) -> str:
         target = node.targets[0]
         return "{0}.drop()".format(self.visit(target))
 
-    def visit_Raise(self, node):
+    def visit_Raise(self, node) -> str:
         if node.exc is not None:
             return "raise!({0}); //unsupported".format(self.visit(node.exc))
         # This handles the case where `raise` is used without
         # specifying the exception.
         return "raise!(); //unsupported"
 
-    def visit_Await(self, node):
+    def visit_Await(self, node) -> str:
         return "await!({0})".format(self.visit(node.value))
 
-    def visit_AsyncFunctionDef(self, node):
+    def visit_AsyncFunctionDef(self, node) -> str:
         return "#[async]\n{0}".format(self.visit_FunctionDef(node))
 
-    def visit_Yield(self, node):
+    def visit_Yield(self, node) -> str:
         if node.value is not None:
             value = self.visit(node.value)
             return f"yield {value}"
         return "yield nil"
 
-    def visit_Print(self, node):
+    def visit_Print(self, node) -> str:
         buf = []
         for n in node.values:
             value = self.visit(n)
             buf.append('println("{{:?}}",{0})'.format(value))
         return "\n".join(buf)
 
-    def visit_GeneratorExp(self, node):
+    def visit_GeneratorExp(self, node) -> str:
         elt = self.visit(node.elt)
         generator = node.generators[0]
         target = self.visit(generator.target)
@@ -556,16 +556,16 @@ class NimTranspiler(CLikeTranspiler):
 
         return "{0}{1}{2}.collect::<Vec<_>>()".format(iter, filter_str, map_str)
 
-    def visit_ListComp(self, node):
+    def visit_ListComp(self, node) -> str:
         return self.visit_GeneratorExp(node)  # right now they are the same
 
-    def visit_Global(self, node):
+    def visit_Global(self, node) -> str:
         return "//global {0}".format(", ".join(node.names))
 
-    def visit_Starred(self, node):
+    def visit_Starred(self, node) -> str:
         return "starred!({0})/*unsupported*/".format(self.visit(node.value))
 
-    def visit_IfExp(self, node):
+    def visit_IfExp(self, node) -> str:
         body = self.visit(node.body)
         orelse = self.visit(node.orelse)
         test = self.visit(node.test)

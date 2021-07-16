@@ -159,7 +159,7 @@ class VTranspiler(CLikeTranspiler):
 
         return " ".join(signature)
 
-    def visit_FunctionDef(self, node):
+    def visit_FunctionDef(self, node) -> str:
         body = "\n".join([self.indent(self.visit(n)) for n in node.body])
         return f"{self.function_signature(node)} {{\n{body}\n}}"
 
@@ -365,7 +365,7 @@ class VTranspiler(CLikeTranspiler):
 
         return "{0}..{1}".format(lower, upper)
 
-    def visit_Elipsis(self, node):
+    def visit_Elipsis(self, node) -> str:
         return ""
 
     def visit_Tuple(self, node: ast.Tuple) -> str:

@@ -118,16 +118,16 @@ class CLikeTranspiler(CommonCLikeTranspiler):
         self._type_map = NIM_TYPE_MAP
         self._statement_separator = ""
 
-    def visit(self, node):
+    def visit(self, node) -> str:
         if type(node) in nim_symbols:
             return nim_symbol(node)
         else:
             return super().visit(node)
 
-    def visit_Ellipsis(self, node):
+    def visit_Ellipsis(self, node) -> str:
         return "discard"
 
-    def visit_BinOp(self, node):
+    def visit_BinOp(self, node) -> str:
         if isinstance(node.op, ast.Pow):
             left = self.visit(node.left)
             right = self.visit(node.right)
@@ -150,14 +150,14 @@ class CLikeTranspiler(CommonCLikeTranspiler):
 
         return f"({left} {op} {right})"
 
-    def visit_Name(self, node):
+    def visit_Name(self, node) -> str:
         if node.id in nim_keywords:
             return node.id + "_"
         if node.id.startswith("_"):
             return "_"
         return super().visit_Name(node)
 
-    def visit_In(self, node):
+    def visit_In(self, node) -> str:
         left = self.visit(node.left)
         right = self.visit(node.comparators[0])
         left_type = self._typename_from_annotation(node.left)

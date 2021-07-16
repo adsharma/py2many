@@ -153,7 +153,7 @@ class CppTranspiler(CLikeTranspiler):
             self._headers.append("#include <stdint.h>")
         return "\n".join(self._headers)
 
-    def visit_FunctionDef(self, node):
+    def visit_FunctionDef(self, node) -> str:
         body = "\n".join([self.visit(n) for n in node.body])
         # If rewriter inserted a block, we need to terminate it with a semicolon
         if len(node.body):
@@ -216,7 +216,7 @@ class CppTranspiler(CLikeTranspiler):
 
         return funcdef + "\n" + body + "}\n"
 
-    def visit_Attribute(self, node):
+    def visit_Attribute(self, node) -> str:
         attr = node.attr
         value_id = self.visit(node.value)
 
@@ -243,7 +243,7 @@ class CppTranspiler(CLikeTranspiler):
 
         return ret
 
-    def visit_ClassDef(self, node):
+    def visit_ClassDef(self, node) -> str:
         extractor = DeclarationExtractor(CppTranspiler())
         extractor.visit(node)
         declarations = node.declarations = extractor.get_declarations()
@@ -291,7 +291,7 @@ class CppTranspiler(CLikeTranspiler):
         buf += ["};"]
         return "\n".join(buf) + "\n"
 
-    def _visit_enum(self, node, typename: str, fields: List[Tuple]):
+    def _visit_enum(self, node, typename: str, fields: List[Tuple]) -> str:
         fields_list = []
 
         for field, value in fields:
@@ -299,7 +299,7 @@ class CppTranspiler(CLikeTranspiler):
         fields_str = "".join(fields_list)
         return f"enum {node.name} : {typename} {{\n{fields_str}}};\n"
 
-    def visit_IntEnum(self, node):
+    def visit_IntEnum(self, node) -> str:
         fields = []
         for i, (member, var) in enumerate(node.class_assignments.items()):
             var = self.visit(var)
@@ -308,7 +308,7 @@ class CppTranspiler(CLikeTranspiler):
             fields.append((member, var))
         return self._visit_enum(node, "int", fields)
 
-    def visit_IntFlag(self, node):
+    def visit_IntFlag(self, node) -> str:
         fields = []
         for i, (member, var) in enumerate(node.class_assignments.items()):
             var = self.visit(var)
@@ -317,7 +317,7 @@ class CppTranspiler(CLikeTranspiler):
             fields.append((member, var))
         return self._visit_enum(node, "int", fields)
 
-    def visit_StrEnum(self, node):
+    def visit_StrEnum(self, node) -> str:
         fields = []
         definitions = []
         for i, (member, node_var) in enumerate(node.class_assignments.items()):
@@ -347,7 +347,7 @@ class CppTranspiler(CLikeTranspiler):
             """
         )
 
-    def visit_Call(self, node):
+    def visit_Call(self, node) -> str:
         fname = self.visit(node.func)
         vargs = []
 
@@ -366,7 +366,7 @@ class CppTranspiler(CLikeTranspiler):
         args = ", ".join(vargs)
         return f"{fname}({args})"
 
-    def visit_For(self, node):
+    def visit_For(self, node) -> str:
         target = self.visit(node.target)
         it = self.visit(node.iter)
         buf = []
@@ -388,29 +388,29 @@ class CppTranspiler(CLikeTranspiler):
                 self._headers.append("#include <map>")
         return (typename, node_id)
 
-    def visit_Lambda(self, node):
+    def visit_Lambda(self, node) -> str:
         _, args = self.visit(node.args)
         args_string = ", ".join([f"auto {a}" for a in args])
         body = self.visit(node.body)
         return f"[]({args_string}) {{ return {body}; }}"
 
-    def visit_Str(self, node):
+    def visit_Str(self, node) -> str:
         """Use a C++ 14 string literal instead of raw string"""
         node.raw_string = super().visit_Str(node)
         return f"std::string{{{node.raw_string}}}"
 
-    def visit_Bytes(self, node):
+    def visit_Bytes(self, node) -> str:
         byte_literal = super().visit_Bytes(node)
         n = len(node.s)
         return f"((std::array<unsigned char, {n}>){byte_literal})"
 
-    def visit_Name(self, node):
+    def visit_Name(self, node) -> str:
         if node.id == "None":
             return "nullptr"
         else:
             return super().visit_Name(node)
 
-    def visit_Constant(self, node):
+    def visit_Constant(self, node) -> str:
         if node.value is True:
             return "true"
         elif node.value is False:
@@ -420,7 +420,7 @@ class CppTranspiler(CLikeTranspiler):
         else:
             return super().visit_Constant(node)
 
-    def visit_Expr(self, node):
+    def visit_Expr(self, node) -> str:
         s = super().visit_Expr(node)
         if getattr(node, "unused", False):
             s = "(void) " + s
@@ -436,7 +436,7 @@ class CppTranspiler(CLikeTranspiler):
         node.make_block = True
         return "\n".join(buf)
 
-    def visit_If(self, node):
+    def visit_If(self, node) -> str:
         body_vars = set([get_id(v) for v in node.scopes[-1].body_vars])
         orelse_vars = set([get_id(v) for v in node.scopes[-1].orelse_vars])
         node.common_vars = body_vars.intersection(orelse_vars)
@@ -451,7 +451,7 @@ class CppTranspiler(CLikeTranspiler):
 
         return "".join(var_definitions) + super().visit_If(node)
 
-    def visit_UnaryOp(self, node):
+    def visit_UnaryOp(self, node) -> str:
         if isinstance(node.op, ast.USub):
             if isinstance(node.operand, (ast.Call, ast.Num)):
                 # Shortcut if parenthesis are not needed
@@ -461,7 +461,7 @@ class CppTranspiler(CLikeTranspiler):
         else:
             return super().visit_UnaryOp(node)
 
-    def visit_BinOp(self, node):
+    def visit_BinOp(self, node) -> str:
         if (
             isinstance(node.left, ast.List)
             and isinstance(node.op, ast.Mult)
@@ -499,7 +499,7 @@ class CppTranspiler(CLikeTranspiler):
         else:
             return self._default_type
 
-    def visit_List(self, node):
+    def visit_List(self, node) -> str:
         self._usings.add("<vector>")
         elements = [self.visit(e) for e in node.elts]
         elements_str = ", ".join(elements)
@@ -512,7 +512,7 @@ class CppTranspiler(CLikeTranspiler):
             return f"{typename}{{{elements_str}}}"
         return f"{{{elements_str}}}"
 
-    def visit_Set(self, node):
+    def visit_Set(self, node) -> str:
         self._usings.add("<set>")
         elements = [self.visit(e) for e in node.elts]
         elements_str = ", ".join(elements)
@@ -522,7 +522,7 @@ class CppTranspiler(CLikeTranspiler):
             return f"{typename}{{{elements_str}}}"
         return f"std::set<{element_type}>{{{elements_str}}}"
 
-    def visit_Dict(self, node):
+    def visit_Dict(self, node) -> str:
         self._usings.add("<map>")
         keys = [self.visit(k) for k in node.keys]
         values = [self.visit(k) for k in node.values]
@@ -538,7 +538,7 @@ class CppTranspiler(CLikeTranspiler):
             return f"{typename}{{{kv_pairs}}}"
         return f"std::map<{key_typename}, {value_typename}>{{{kv_pairs}}}"
 
-    def visit_Subscript(self, node):
+    def visit_Subscript(self, node) -> str:
         value = self.visit(node.value)
         if isinstance(node.slice, ast.Ellipsis):
             raise AstNotImplementedError("Ellipsis not supported", node)
@@ -551,12 +551,12 @@ class CppTranspiler(CLikeTranspiler):
             return "{0}<{1}>".format(value, index)
         return f"{value}[{index}]"
 
-    def visit_Tuple(self, node):
+    def visit_Tuple(self, node) -> str:
         self._headers.append("#include <tuple>")
         elts = [self.visit(e) for e in node.elts]
         return "std::make_tuple({0})".format(", ".join(elts))
 
-    def visit_Try(self, node, finallybody=None):
+    def visit_Try(self, node, finallybody=None) -> str:
         self._usings.add("<iostream>")
         buf = ["try {"]
         buf += [self.visit(n) for n in node.body]
@@ -582,16 +582,16 @@ class CppTranspiler(CLikeTranspiler):
 
         return "\n".join(buf)
 
-    def visit_ExceptHandler(self, node):
+    def visit_ExceptHandler(self, node) -> str:
         return "ExceptHandler /*unimplemented()*/"
 
-    def visit_Assert(self, node):
+    def visit_Assert(self, node) -> str:
         if not self.use_catch_test_cases:
             self._usings.add("<cassert>")
             return "assert({0});".format(self.visit(node.test))
         return "REQUIRE({0});".format(self.visit(node.test))
 
-    def _visit_AssignOne(self, node, target):
+    def _visit_AssignOne(self, node, target) -> str:
         if isinstance(target, ast.Tuple):
             elts = [self.visit(e) for e in target.elts]
             value = self.visit(node.value)
@@ -632,11 +632,11 @@ class CppTranspiler(CLikeTranspiler):
 
         return f"{typename} {target} = {value};"
 
-    def visit_AnnAssign(self, node):
+    def visit_AnnAssign(self, node) -> str:
         target, type_str, val = super().visit_AnnAssign(node)
         return f"{type_str} {target} = {val};"
 
-    def visit_Print(self, node):
+    def visit_Print(self, node) -> str:
         buf = []
         for n in node.values:
             value = self.visit(n)
@@ -650,11 +650,11 @@ class CppTranspiler(CLikeTranspiler):
                 buf.append("std::cout << {0} << std::endl;".format(value))
         return "\n".join(buf)
 
-    def visit_GeneratorExp(self, node):
+    def visit_GeneratorExp(self, node) -> str:
         return self.visit_unsupported_body(node, "generator exp", [])
 
-    def visit_Raise(self, node):
+    def visit_Raise(self, node) -> str:
         return self.visit_unsupported_body(node, "raise", [])
 
-    def visit_Starred(self, node):
+    def visit_Starred(self, node) -> str:
         return self.visit_unsupported_body(node, "starred", [])

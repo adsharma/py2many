@@ -160,7 +160,7 @@ class GoTranspiler(CLikeTranspiler):
     def comment(self, text):
         return f"// {text}\n"
 
-    def visit_FunctionDef(self, node):
+    def visit_FunctionDef(self, node) -> str:
         body = "\n".join([self.visit(n) for n in node.body])
         typenames, args = self.visit(node.args)
 
@@ -199,7 +199,7 @@ class GoTranspiler(CLikeTranspiler):
         funcdef = f"func {node.name}{template}({args}){return_type} {{"
         return f"{funcdef}\n{body}}}\n\n"
 
-    def visit_Return(self, node):
+    def visit_Return(self, node) -> str:
         if node.value:
             ret = self.visit(node.value)
             fndef = None
@@ -228,7 +228,7 @@ class GoTranspiler(CLikeTranspiler):
             typename = self._typename_from_annotation(node)
         return (typename, id)
 
-    def visit_Lambda(self, node):
+    def visit_Lambda(self, node) -> str:
         typenames, args = self.visit(node.args)
         # HACK: to pass unit tests. TODO: infer types
         # Need to get it from the annotation on the lhs of `node`
@@ -239,7 +239,7 @@ class GoTranspiler(CLikeTranspiler):
         body = self.visit(node.body)
         return f"func({args_string}) {return_type} {{ return {body} }}"
 
-    def visit_Attribute(self, node):
+    def visit_Attribute(self, node) -> str:
         attr = node.attr
 
         value_id = self.visit(node.value)
@@ -260,7 +260,7 @@ class GoTranspiler(CLikeTranspiler):
 
         return f"{value_id}.{attr}"
 
-    def _visit_struct_literal(self, node, fname: str, fndef: ast.ClassDef):
+    def _visit_struct_literal(self, node, fname: str, fndef: ast.ClassDef) -> str:
         vargs = []  # visited args
         if not hasattr(fndef, "declarations"):
             raise AstClassUsedBeforeDeclaration(fndef, node)
@@ -275,7 +275,7 @@ class GoTranspiler(CLikeTranspiler):
         args = ", ".join(vargs)
         return f"{fname}{{{args}}}"
 
-    def visit_Call(self, node):
+    def visit_Call(self, node) -> str:
         fname = self.visit(node.func)
         fndef = node.scopes.find(fname)
 
@@ -298,7 +298,7 @@ class GoTranspiler(CLikeTranspiler):
             args = ""
         return f"{fname}({args})"
 
-    def visit_For(self, node):
+    def visit_For(self, node) -> str:
         target = self.visit(node.target)
         it = self.visit(node.iter)
         buf = []
@@ -313,21 +313,21 @@ class GoTranspiler(CLikeTranspiler):
         buf.append("}")
         return "\n".join(buf)
 
-    def visit_While(self, node):
+    def visit_While(self, node) -> str:
         buf = []
         buf.append("for {0} {{".format(self.visit(node.test)))
         buf.extend([self.visit(c) for c in node.body])
         buf.append("}")
         return "\n".join(buf)
 
-    def visit_Str(self, node):
+    def visit_Str(self, node) -> str:
         return "" + super().visit_Str(node) + ""
 
-    def visit_Bytes(self, node):
+    def visit_Bytes(self, node) -> str:
         bytes_str = "{0}".format(node.s)
         return bytes_str.replace("'", '"')  # replace single quote with double quote
 
-    def _visit_container_compare(self, node):
+    def _visit_container_compare(self, node) -> str:
         left = self.visit(node.left)
         op = self.visit(node.ops[0])
         right = self.visit(node.comparators[0])
@@ -335,7 +335,7 @@ class GoTranspiler(CLikeTranspiler):
             return f"cmp.Equal({left}, {right})"
         return super().visit_Compare(node)
 
-    def visit_Compare(self, node):
+    def visit_Compare(self, node) -> str:
         left = node.left
         right = node.comparators[0]
         if hasattr(left, "annotation") or hasattr(right, "annotation"):
@@ -353,7 +353,7 @@ class GoTranspiler(CLikeTranspiler):
         right = self.visit(node.comparators[0])
         return super().visit_Compare(node)
 
-    def visit_Name(self, node):
+    def visit_Name(self, node) -> str:
         if node.id == "None":
             return "None"
         elif node.id == "StringsContains":
@@ -363,7 +363,7 @@ class GoTranspiler(CLikeTranspiler):
         else:
             return super().visit_Name(node)
 
-    def visit_NameConstant(self, node):
+    def visit_NameConstant(self, node) -> str:
         if node.value is None:
             return "nil"
         else:
@@ -376,7 +376,7 @@ class GoTranspiler(CLikeTranspiler):
         buf.append("}")
         return "\n".join(buf)
 
-    def visit_If(self, node):
+    def visit_If(self, node) -> str:
         body_vars = {get_id(v): v for v in node.scopes[-1].body_vars}
         orelse_vars = {get_id(v): v for v in node.scopes[-1].orelse_vars}
         node.common_vars = set(body_vars.keys()).intersection(set(orelse_vars.keys()))
@@ -389,7 +389,7 @@ class GoTranspiler(CLikeTranspiler):
         else:
             return super().visit_If(node)
 
-    def visit_UnaryOp(self, node):
+    def visit_UnaryOp(self, node) -> str:
         if isinstance(node.op, ast.USub):
             if isinstance(node.operand, (ast.Call, ast.Num)):
                 # Shortcut if parenthesis are not needed
@@ -399,7 +399,7 @@ class GoTranspiler(CLikeTranspiler):
         else:
             return super().visit_UnaryOp(node)
 
-    def visit_BinOp(self, node):
+    def visit_BinOp(self, node) -> str:
         if (
             isinstance(node.left, ast.List)
             and isinstance(node.op, ast.Mult)
@@ -411,7 +411,7 @@ class GoTranspiler(CLikeTranspiler):
         else:
             return super().visit_BinOp(node)
 
-    def visit_ClassDef(self, node):
+    def visit_ClassDef(self, node) -> str:
         extractor = DeclarationExtractor(GoTranspiler())
         extractor.visit(node)
         declarations = node.declarations = extractor.get_declarations()
@@ -447,7 +447,7 @@ class GoTranspiler(CLikeTranspiler):
         body = "\n".join(body)
         return f"type {node.name} struct {{\n{fields}\n}}\n{body}\n"
 
-    def _visit_enum(self, node, typename, members):
+    def _visit_enum(self, node, typename, members) -> str:
         ret = f"type {node.name} {typename}\n\n"
         fields = []
         for i, (member, var) in enumerate(members):
@@ -459,7 +459,7 @@ class GoTranspiler(CLikeTranspiler):
         fields = "\n".join(fields)
         return f"{ret} const (\n{fields}\n)\n\n"
 
-    def visit_IntEnum(self, node):
+    def visit_IntEnum(self, node) -> str:
         members = []
         for i, (member, var) in enumerate(node.class_assignments.items()):
             var = self.visit(var)
@@ -469,7 +469,7 @@ class GoTranspiler(CLikeTranspiler):
                 members.append((member, var))
         return self._visit_enum(node, "int", members)
 
-    def visit_IntFlag(self, node):
+    def visit_IntFlag(self, node) -> str:
         members = []
         for i, (member, var) in enumerate(node.class_assignments.items()):
             var = self.visit(var)
@@ -479,7 +479,7 @@ class GoTranspiler(CLikeTranspiler):
                 members.append((member, var))
         return self._visit_enum(node, "int", members)
 
-    def visit_StrEnum(self, node):
+    def visit_StrEnum(self, node) -> str:
         members = []
         for i, (member, var) in enumerate(node.class_assignments.items()):
             var = self.visit(var)
@@ -501,7 +501,7 @@ class GoTranspiler(CLikeTranspiler):
         module_name = module_name.replace(".", "/")
         return "\n".join([f'import ("{module_name}/{name}")' for name in names])
 
-    def visit_List(self, node):
+    def visit_List(self, node) -> str:
         _ = self._typename_from_annotation(node)
         element_type = self._default_type
         if hasattr(node, "container_type"):
@@ -510,7 +510,7 @@ class GoTranspiler(CLikeTranspiler):
         elements_str = ", ".join(elements)
         return f"[]{element_type}{{{elements_str}}}"
 
-    def visit_Set(self, node):
+    def visit_Set(self, node) -> str:
         _ = self._typename_from_annotation(node)
         element_type = self._default_type
         if hasattr(node, "container_type"):
@@ -519,7 +519,7 @@ class GoTranspiler(CLikeTranspiler):
         kv_pairs = ", ".join([f"{k}: true" for k in elements])
         return f"map[{element_type}]bool{{{kv_pairs}}}"
 
-    def visit_Dict(self, node):
+    def visit_Dict(self, node) -> str:
         keys = [self.visit(k) for k in node.keys]
         values = [self.visit(k) for k in node.values]
         kv_pairs = ", ".join([f"{k}: {v}" for k, v in zip(keys, values)])
@@ -532,7 +532,7 @@ class GoTranspiler(CLikeTranspiler):
                 key_typename = "int"
         return f"map[{key_typename}]{value_typename}{{{kv_pairs}}}"
 
-    def visit_Subscript(self, node):
+    def visit_Subscript(self, node) -> str:
         value = self.visit(node.value)
         index = self.visit(node.slice)
         if hasattr(node, "is_annotation"):
@@ -543,10 +543,10 @@ class GoTranspiler(CLikeTranspiler):
             return "{0}{1}".format(value, index)
         return "{0}[{1}]".format(value, index)
 
-    def visit_Index(self, node):
+    def visit_Index(self, node) -> str:
         return self.visit(node.value)
 
-    def visit_Slice(self, node):
+    def visit_Slice(self, node) -> str:
         lower = ""
         if node.lower:
             lower = self.visit(node.lower)
@@ -556,14 +556,14 @@ class GoTranspiler(CLikeTranspiler):
 
         return "{0}..{1}".format(lower, upper)
 
-    def visit_Tuple(self, node):
+    def visit_Tuple(self, node) -> str:
         elts = [self.visit(e) for e in node.elts]
         elts = ", ".join(elts)
         if hasattr(node, "is_annotation"):
             return elts
         return "{0}".format(elts)
 
-    def visit_Try(self, node, finallybody=None):
+    def visit_Try(self, node, finallybody=None) -> str:
         buf = self.visit_unsupported_body(node, "try_dummy", node.body)
 
         for handler in node.handlers:
@@ -575,7 +575,7 @@ class GoTranspiler(CLikeTranspiler):
 
         return "\n".join(buf)
 
-    def visit_ExceptHandler(self, node):
+    def visit_ExceptHandler(self, node) -> str:
         exception_type = ""
         if node.type:
             exception_type = self.visit(node.type)
@@ -583,11 +583,11 @@ class GoTranspiler(CLikeTranspiler):
         body = self.visit_unsupported_body(node, name, node.body)
         return body
 
-    def visit_Assert(self, node):
+    def visit_Assert(self, node) -> str:
         condition = self.visit(node.test)
         return f'if !({condition}) {{ panic("assert") }}'
 
-    def visit_AnnAssign(self, node):
+    def visit_AnnAssign(self, node) -> str:
         target = self.visit(node.target)
         type_str = self._typename_from_annotation(node)
         val = self.visit(node.value) if node.value is not None else None
@@ -611,7 +611,7 @@ class GoTranspiler(CLikeTranspiler):
         # python/rust annotations provided to customize the cast if necessary
         return f"{cast_to}({value_str})"
 
-    def _visit_AssignOne(self, node, target):
+    def _visit_AssignOne(self, node, target) -> str:
         if isinstance(target, ast.Tuple):
             elts = [self.visit(e) for e in target.elts]
             value = self.visit(node.value)
@@ -663,27 +663,27 @@ class GoTranspiler(CLikeTranspiler):
                 return f"var {target_str} = {value}"
             return f"{target_str} := {value}"
 
-    def visit_Delete(self, node):
+    def visit_Delete(self, node) -> str:
         target = node.targets[0]
         return "{0}.drop()".format(self.visit(target))
 
-    def visit_Raise(self, node):
+    def visit_Raise(self, node) -> str:
         if node.exc is not None:
             return "raise!({0}); //unsupported".format(self.visit(node.exc))
         # This handles the case where `raise` is used without
         # specifying the exception.
         return "raise!(); //unsupported"
 
-    def visit_Await(self, node):
+    def visit_Await(self, node) -> str:
         return "await!({0})".format(self.visit(node.value))
 
-    def visit_AsyncFunctionDef(self, node):
+    def visit_AsyncFunctionDef(self, node) -> str:
         return "#[async]\n{0}".format(self.visit_FunctionDef(node))
 
-    def visit_Yield(self, node):
+    def visit_Yield(self, node) -> str:
         return "//yield is unimplemented"
 
-    def visit_Print(self, node):
+    def visit_Print(self, node) -> str:
         buf = []
         self._usings.add('"fmt"')
         for n in node.values:
@@ -691,7 +691,7 @@ class GoTranspiler(CLikeTranspiler):
             buf.append('fmt.Printf("%v\n",{0})'.format(value))
         return "\n".join(buf)
 
-    def visit_GeneratorExp(self, node):
+    def visit_GeneratorExp(self, node) -> str:
         elt = self.visit(node.elt)
         generator = node.generators[0]
         target = self.visit(generator.target)
@@ -710,11 +710,11 @@ class GoTranspiler(CLikeTranspiler):
 
         return "{0}{1}{2}.collect::<Vec<_>>()".format(iter, filter_str, map_str)
 
-    def visit_ListComp(self, node):
+    def visit_ListComp(self, node) -> str:
         return self.visit_GeneratorExp(node)  # right now they are the same
 
-    def visit_Global(self, node):
+    def visit_Global(self, node) -> str:
         return "//global {0}".format(", ".join(node.names))
 
-    def visit_Starred(self, node):
+    def visit_Starred(self, node) -> str:
         return "starred!({0})/*unsupported*/".format(self.visit(node.value))

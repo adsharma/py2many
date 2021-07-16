@@ -136,13 +136,13 @@ class CLikeTranspiler(CommonCLikeTranspiler):
             return name + "_", True
         return name, False
 
-    def visit_Name(self, node):
+    def visit_Name(self, node) -> str:
         node_id, changed = self._check_keyword(node.id)
         if changed:
             return node_id
         return super().visit_Name(node)
 
-    def visit_BinOp(self, node):
+    def visit_BinOp(self, node) -> str:
         if isinstance(node.op, ast.Pow):
             return "std::pow({0}, {1})".format(
                 self.visit(node.left), self.visit(node.right)
@@ -159,7 +159,7 @@ class CLikeTranspiler(CommonCLikeTranspiler):
             right = f"({right})"
         return " ".join([left, self.visit(node.op), right])
 
-    def visit_In(self, node):
+    def visit_In(self, node) -> str:
         self._usings.add("<algorithm>")
         left_str = self.visit(node.left)
         right = node.comparators[0]
